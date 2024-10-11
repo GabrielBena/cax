@@ -75,6 +75,3 @@ warn_unused_ignores = "True"
 [[tool.mypy.overrides]]
 module = ["requests.*"]
 ignore_missing_imports = true
-
-[tool.setuptools]
-packages = ["cax"]

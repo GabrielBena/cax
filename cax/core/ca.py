@@ -7,9 +7,8 @@ import jax
 import jax.numpy as jnp
 
 from cax.core.perceive.perceive import Perceive
-from cax.core.state import State
 from cax.core.update.update import Update
-from cax.types import Input
+from cax.types import Input, State
 from cax.nn.vae import Encoder
 
 
@@ -29,10 +28,10 @@ class CA(nnx.Module):
         """
         self.perceive = perceive
         self.update = update
-
-	@nnx.jit
-	def step(self, state: State, input: Input | None = None) -> State:
-		"""Perform a single step of the CA.
+    
+    @nnx.jit
+    def step(self, state: State, input: Input | None = None) -> State:
+        """Perform a single step of the CA.
 
         Args:
                 state: Current state.
@@ -46,17 +45,17 @@ class CA(nnx.Module):
         state = self.update(state, perception, input)
         return state
 
-	@partial(nnx.jit, static_argnames=("num_steps", "all_steps", "input_in_axis"))
-	def __call__(
-		self,
-		state: State,
-		input: Input | None = None,
-		*,
-		num_steps: int = 1,
-		all_steps: bool = False,
-		input_in_axis: int | None = None,
-	) -> State:
-		"""Run the CA for multiple steps.
+    @partial(nnx.jit, static_argnames=("num_steps", "all_steps", "input_in_axis"))
+    def __call__(
+        self,
+        first_state: State,
+        input: Input | None = None,
+        *,
+        num_steps: int = 1,
+        all_steps: bool = False,
+        input_in_axis: int | None = None,
+    ) -> State:
+        """Run the CA for multiple steps.
 
         Args:
                 state: Initial state.
@@ -70,18 +69,24 @@ class CA(nnx.Module):
 
         """
 
-		def step(carry: tuple[CA, State], input: Input | None) -> tuple[tuple[CA, State], State]:
-			ca, state = carry
-			state = ca.step(state, input)
-			return (ca, state), state if all_steps else None  # type: ignore
+        def step(
+            carry: tuple[CA, State], input: Input | None
+        ) -> tuple[tuple[CA, State], State]:
+            ca, state = carry
+            state = ca.step(state, input)
+            return (ca, state), state if all_steps else None  # type: ignore
 
-        (_, state), states = nnx.scan(
+        (_, last_state), states = nnx.scan(
             step,
             in_axes=(nnx.Carry, input_in_axis),
             length=num_steps,
-        )((self, state), input)
+        )((self, first_state), input)
 
-        return states if all_steps else state
+        return (
+            jnp.concatenate([first_state[None, ...], states], axis=0)
+            if all_steps
+            else last_state
+        )
 
 
 class UnsupervisedCA(CA):
