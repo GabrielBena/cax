@@ -17,6 +17,7 @@ requires-python = ">=3.10"
 authors = [
   { name="Maxence Faldor", email="maxencefaldor@gmail.com" },
 ]
+
 description = "Cellular Automata Accelerated in JAX"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -74,3 +75,6 @@ warn_unused_ignores = "True"
 [[tool.mypy.overrides]]
 module = ["requests.*"]
 ignore_missing_imports = true
+
+[tool.setuptools]
+packages = ["cax"]
